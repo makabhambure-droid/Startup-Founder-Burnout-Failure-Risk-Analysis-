@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Startup Failure Risk Calculator & Scenario Simulator</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zinc: {
+              850: '#141417',
+              950: '#09090b',
+            },
+            risk: {
+              low: '#10b981',
+              moderate: '#f59e0b',
+              high: '#f97316',
+              critical: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts & Chart.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
+    }
+
+    /* Dark Executive Texture */
+    .bg-executive-grid {
+      background-color: #09090b;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(39, 39, 42, 0.3) 0%, transparent 60%),
+        radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 28px 28px;
+    }
+
+    .card-executive {
+      background: rgba(18, 18, 21, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(39, 39, 42, 0.8);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Sleek Professional Range Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #27272a;
+      border-radius: 3px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #fafafa;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -6px;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+      border: 2px solid #18181b;
+      transition: all 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #ffffff;
+      box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+    }
+    
+    /* Gauge Circle Smooth Transition */
+    .gauge-circle {
+      transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-executive-grid text-zinc-100 antialiased selection:bg-zinc-700 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-zinc-900 rounded-lg border border-zinc-700/60 text-zinc-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
+            Startup Mortality & Founder Risk Simulator
+            <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/60">
+              50k Founder Model
+            </span>
+          </h1>
+          <p class="text-xs text-zinc-400">Logistic risk model fitted on the 50,000-founder burnout dataset</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Buttons -->
+      <div class="flex items-center gap-2 overflow-x-auto py-1">
+        <span class="text-xs font-mono uppercase text-zinc-500 whitespace-nowrap hidden md:inline">Presets:</span>
+        <button onclick="loadArchetype('calm')" class="px-2.5 py-1 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-emerald-400 rounded-md border border-emerald-500/20 transition">
+          🌱 Calm Operator
+        </button>
+        <button onclick="loadArchetype('burned_out')" class="px-2.5 py-1 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-rose-400 rounded-md border border-rose-500/20 transition">
+          🔥 Burned-Out Solo
+        </button>
+        <button onclick="loadArchetype('conflict')" class="px-2.5 py-1 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-amber-400 rounded-md border border-amber-500/20 transition">
+          ⚡ Conflict Duo
+        </button>
+        <button onclick="loadArchetype('blitzscaler')" class="px-2.5 py-1 text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-orange-400 rounded-md border border-orange-500/20 transition">
+          🚀 Blitzscaler
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Top Grid: Controls on Left, Real-time Risk Display on Right -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT PANEL: Sliders & Variables (5 cols) -->
+      <section class="lg:col-span-5 card-executive rounded-xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-5 border-b border-zinc-800/80 pb-3">
+            <div>
+              <h2 class="text-sm font-semibold text-zinc-200 tracking-wide uppercase font-mono">Scenario Levers</h2>
+              <p class="text-xs text-zinc-400">Adjust core human and financial indicators</p>
+            </div>
+            <button onclick="resetSliders()" class="text-xs text-zinc-400 hover:text-zinc-200 font-mono flex items-center gap-1 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Reset
+            </button>
+          </div>
+
+          <div class="space-y-5">
+
+            <!-- LEVER 1: Burnout Score -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="burnoutSlider" class="text-xs font-medium text-zinc-300 flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  Founder Burnout Score
+                </label>
+                <div class="text-right font-mono">
+                  <span id="burnoutVal" class="text-sm font-bold text-rose-400">5.0</span>
+                  <span class="text-[10px] text-zinc-500">/ 10</span>
+                </div>
+              </div>
+              <input type="range" id="burnoutSlider" min="1.0" max="10.0" step="0.1" value="5.0" oninput="updateCalculator()">
+              <div class="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                <span>1.0 (Refreshed)</span>
+                <span id="burnoutStatus" class="font-medium text-zinc-400">Moderate Strain</span>
+                <span>10.0 (Severe)</span>
+              </div>
+            </div>
+
+            <!-- LEVER 2: Co-founder Conflict Score -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="conflictSlider" class="text-xs font-medium text-zinc-300 flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Co-Founder Conflict Score
+                </label>
+                <div class="text-right font-mono">
+                  <span id="conflictVal" class="text-sm font-bold text-amber-400">3.5</span>
+                  <span class="text-[10px] text-zinc-500">/ 10</span>
+                </div>
+              </div>
+              <input type="range" id="conflictSlider" min="0.0" max="10.0" step="0.1" value="3.5" oninput="updateCalculator()">
+              <div class="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                <span>0.0 (Aligned)</span>
+                <span id="conflictStatus" class="font-medium text-zinc-400">Mild Friction</span>
+                <span>10.0 (Gridlock)</span>
+              </div>
+            </div>
+
+            <!-- LEVER 3: Runway Months Remaining -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="runwaySlider" class="text-xs font-medium text-zinc-300 flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Runway Months Remaining
+                </label>
+                <div class="text-right font-mono">
+                  <span id="runwayVal" class="text-sm font-bold text-emerald-400">12.0</span>
+                  <span class="text-[10px] text-zinc-500">Mos</span>
+                </div>
+              </div>
+              <input type="range" id="runwaySlider" min="1.0" max="36.0" step="0.5" value="12.0" oninput="updateCalculator()">
+              <div class="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
+                <span class="text-rose-400 font-semibold">1 Mo</span>
+                <span id="runwayStatus" class="font-medium text-zinc-400">Stable Horizon</span>
+                <span>36 Mos</span>
+              </div>
+            </div>
+
+            <!-- SECONDARY MODIFIER: Investor Pressure -->
+            <div class="pt-2 border-t border-zinc-800/60">
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="investorSlider" class="text-xs font-medium text-zinc-400">
+                  Investor Pressure (minimal effect in data)
+                </label>
+                <span id="investorVal" class="text-xs font-mono font-semibold text-zinc-300">5.0 / 10</span>
+              </div>
+              <input type="range" id="investorSlider" min="1.0" max="10.0" step="0.5" value="5.0" oninput="updateCalculator()">
+            </div>
+
+            <!-- MACRO LEVER: Economic Climate -->
+            <div class="pt-2 border-t border-zinc-800/60">
+              <div class="flex justify-between items-center mb-1.5">
+                <label for="economicSelect" class="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+                  Economic Environment
+                </label>
+                <span id="economicBadge" class="text-xs font-mono font-medium text-zinc-400">Stable</span>
+              </div>
+              <select id="economicSelect" onchange="updateCalculator()" class="w-full bg-zinc-900 border border-zinc-700/60 text-xs rounded-md px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-500 transition">
+                <option value="boom">🚀 Bull Market (≈ baseline)</option>
+                <option value="stable" selected>⚖️ Stable Economy (Baseline)</option>
+                <option value="downturn">📉 Funding Winter (higher risk)</option>
+                <option value="crisis">⚡ Recession (highest risk)</option>
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Add to Scenario Comparison Button -->
+        <div class="pt-5 border-t border-zinc-800/80 mt-5 flex gap-2">
+          <select id="scenarioTypeSelect" class="bg-zinc-900 border border-zinc-700/60 text-xs rounded-md px-3 py-2 text-zinc-200 focus:outline-none focus:border-zinc-500 flex-1 font-mono cursor-pointer">
+            <option value="🌱 Pre-Seed Stage">🌱 Pre-Seed Stage</option>
+            <option value="🚀 Post-Seed Growth" selected>🚀 Post-Seed Growth</option>
+            <option value="📈 Series A Scaling">📈 Series A Scaling</option>
+            <option value="🛡️ Bootstrapped Setup">🛡️ Bootstrapped Setup</option>
+            <option value="📉 Tech Winter Survival">📉 Tech Winter Survival</option>
+            <option value="🔄 Pivot & Restructure">🔄 Pivot & Restructure</option>
+            <option value="🏛️ Governance Dispute">🏛️ Governance Dispute</option>
+            <option value="🎯 Custom Setup">🎯 Custom Setup</option>
+          </select>
+          <button onclick="saveCurrentScenario()" class="px-3.5 py-2 bg-zinc-200 hover:bg-white text-zinc-950 text-xs font-semibold rounded-md transition shadow flex items-center gap-1.5 whitespace-nowrap">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Save Scenario
+          </button>
+        </div>
+      </section>
+
+      <!-- RIGHT PANEL: Live Startup Failure Risk Gauge & Breakdown (7 cols) -->
+      <section class="lg:col-span-7 card-executive rounded-xl p-6 flex flex-col justify-between">
+        
+        <div>
+          <div class="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3">
+            <h2 class="text-sm font-semibold text-zinc-200 tracking-wide uppercase font-mono">Live Failure Risk Output</h2>
+            <div id="riskCategoryBadge" class="px-2.5 py-0.5 text-xs font-mono font-semibold rounded border bg-amber-500/10 text-amber-400 border-amber-500/20">
+              MODERATE RISK
+            </div>
+          </div>
+
+          <!-- Gauge and Key Metrics Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center my-2">
+            
+            <!-- Gauge SVG -->
+            <div class="md:col-span-6 flex flex-col items-center justify-center relative">
+              <svg class="w-44 h-44 transform -rotate-90" viewBox="0 0 120 120">
+                <!-- Track -->
+                <circle cx="60" cy="60" r="50" stroke="#18181b" stroke-width="8" fill="transparent"/>
+                <!-- Animated Gauge Fill -->
+                <circle id="gaugeCircle" cx="60" cy="60" r="50" stroke="#f59e0b" stroke-width="8" fill="transparent"
+                        stroke-dasharray="314.15" stroke-dashoffset="180" stroke-linecap="round" class="gauge-circle"/>
+              </svg>
+              
+              <!-- Center Text inside Gauge -->
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span id="riskPercentText" class="text-4xl font-extrabold tracking-tight font-mono text-zinc-100">42.5%</span>
+                <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">Shutdown Probability</span>
+              </div>
+            </div>
+
+            <!-- Risk Drivers Contribution Breakdown -->
+            <div class="md:col-span-6 space-y-3.5">
+              <h3 class="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Risk Factor Attribution</h3>
+              
+              <!-- Factor 1: Burnout Strain -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-zinc-300">Psychological Strain</span>
+                  <span id="burnoutContribText" class="font-mono font-semibold text-rose-400">42%</span>
+                </div>
+                <div class="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
+                  <div id="burnoutContribBar" class="bg-rose-500 h-full transition-all duration-300" style="width: 42%"></div>
+                </div>
+              </div>
+
+              <!-- Factor 2: Relational Conflict -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-zinc-300">Co-founder Friction</span>
+                  <span id="conflictContribText" class="font-mono font-semibold text-amber-400">31%</span>
+                </div>
+                <div class="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
+                  <div id="conflictContribBar" class="bg-amber-500 h-full transition-all duration-300" style="width: 31%"></div>
+                </div>
+              </div>
+
+              <!-- Factor 3: Financial Pressure -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-zinc-300">Runway Time Pressure</span>
+                  <span id="runwayContribText" class="font-mono font-semibold text-emerald-400">27%</span>
+                </div>
+                <div class="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
+                  <div id="runwayContribBar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 27%"></div>
+                </div>
+              </div>
+
+              <div class="pt-1 text-[11px] text-zinc-400">
+                Burnout + conflict make up <span id="humanVsMoneyText" class="text-zinc-200 font-mono font-semibold">73%</span> of the burnout / conflict / runway effect vs. the dataset average.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Executive Recommendation Box -->
+        <div class="bg-zinc-900/90 border border-zinc-800/80 rounded-lg p-3.5 mt-3 flex items-start gap-3">
+          <div class="p-1.5 bg-zinc-800 text-zinc-300 rounded shrink-0 mt-0.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h4 class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-0.5">Primary Leverage Point</h4>
+            <p id="recommendationText" class="text-xs text-zinc-300 leading-relaxed">
+              Extending runway by 3 months will drop risk by 8.4%. However, reducing founder burnout yields a larger risk reduction.
+            </p>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- MIDDLE SECTION: Side-by-Side Scenario Comparison Matrix -->
+    <section class="card-executive rounded-xl p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-5 border-b border-zinc-800/80 pb-3">
+        <div>
+          <h2 class="text-sm font-semibold text-zinc-200 tracking-wide uppercase font-mono flex items-center gap-2">
+            Side-by-Side Scenario Matrix
+          </h2>
+          <p class="text-xs text-zinc-400">Compare up to 4 setups to identify the lowest risk path</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="clearScenarios()" class="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-mono rounded border border-zinc-800 transition">
+            Clear Scenarios
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid of Scenario Cards -->
+      <div id="scenarioGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- BOTTOM SECTION: Visual Analytics -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Chart 1: Risk Sensitivity Curve Over Runway (7 cols) -->
+      <section class="lg:col-span-7 card-executive rounded-xl p-6">
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-zinc-200 uppercase font-mono">Runway Sensitivity Curve</h3>
+          <p class="text-xs text-zinc-400">Failure risk trajectory as runway decreases under current burnout level</p>
+        </div>
+        <div class="h-60 relative">
+          <canvas id="sensitivityChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Chart 2: Dataset Radar (5 cols) -->
+      <section class="lg:col-span-5 card-executive rounded-xl p-6">
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-zinc-200 uppercase font-mono">Archetype Radar Profile</h3>
+          <p class="text-xs text-zinc-400">Active scenario vs 50,000 founder benchmark averages</p>
+        </div>
+        <div class="h-60 relative flex items-center justify-center">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </section>
+
+    </div>
+
+    <p class="text-[11px] text-zinc-500 font-mono leading-relaxed">
+      Model note: fractional-logit regression on 50,000 founders (burnout, co-founder conflict, runway, investor pressure, economic climate). R² = 0.72 on Shutdown_Probability; AUC = 0.93 for Startup_Failure_Flag. Investor pressure has almost no independent effect once the other variables are included. Educational simulator, not financial advice.
+    </p>
+  </main>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // State
+    let scenarios = [
+      {
+        id: '1',
+        title: '🌱 Calm Operator',
+        burnout: 2.2,
+        conflict: 1.5,
+        runway: 18.0,
+        investor: 3.5,
+        economicClimate: 'stable',
+        risk: 14.8
+      },
+      {
+        id: '2',
+        title: '🔥 Burned-Out Solo',
+        burnout: 8.8,
+        conflict: 2.0,
+        runway: 6.0,
+        investor: 7.0,
+        economicClimate: 'downturn',
+        risk: 76.3
+      },
+      {
+        id: '3',
+        title: '⚡ Conflict Duo',
+        burnout: 6.5,
+        conflict: 8.9,
+        runway: 10.0,
+        investor: 8.0,
+        economicClimate: 'stable',
+        risk: 68.2
+      }
+    ];
+
+    let currentInputs = {
+      burnout: 5.0,
+      conflict: 3.5,
+      runway: 12.0,
+      investor: 5.0,
+      economicClimate: 'stable'
+    };
+
+    let sensitivityChartInstance = null;
+    let radarChartInstance = null;
+
+    // Archetype Presets
+    const ARCHETYPES = {
+      calm: { burnout: 2.0, conflict: 1.5, runway: 18.0, investor: 3.0, economicClimate: 'stable' },
+      burned_out: { burnout: 8.5, conflict: 3.0, runway: 5.0, investor: 7.5, economicClimate: 'downturn' },
+      conflict: { burnout: 6.0, conflict: 8.5, runway: 9.0, investor: 8.0, economicClimate: 'stable' },
+      blitzscaler: { burnout: 7.0, conflict: 5.5, runway: 4.0, investor: 9.0, economicClimate: 'boom' }
+    };
+
+    // Logistic model fitted on startup_founder_burnout_2026.csv (50,000 founders)
+    // Target: Shutdown_Probability (fractional logit). Fit quality: R2 = 0.72; AUC for Startup_Failure_Flag = 0.93
+    const MODEL = {
+      intercept: -1.4227,
+      burnout: 0.2688, conflict: 0.2294, runway: -0.1038, investor: -0.0033,
+      climate: { boom: -0.0215, stable: 0, downturn: 0.6336, crisis: 0.9240 }
+    };
+    const DATASET_MEAN = { burnout: 3.44, conflict: 4.01, runway: 12.39, investor: 6.14 };
+    const CLIMATE_LABELS = { boom: 'Bull Market', stable: 'Stable Economy', downturn: 'Funding Winter', crisis: 'Recession' };
+
+    function calculateStartupFailureRisk(burnout, conflict, runway, investor, economicClimate) {
+      const z = MODEL.intercept
+        + MODEL.burnout * burnout
+        + MODEL.conflict * conflict
+        + MODEL.runway * runway
+        + MODEL.investor * investor
+        + (MODEL.climate[economicClimate] || 0);
+      return 1 / (1 + Math.exp(-z));   // probability between 0 and 1
+    }
+
+    function updateCalculator() {
+      // Read slider values
+      currentInputs.burnout = parseFloat(document.getElementById('burnoutSlider').value);
+      currentInputs.conflict = parseFloat(document.getElementById('conflictSlider').value);
+      currentInputs.runway = parseFloat(document.getElementById('runwaySlider').value);
+      currentInputs.investor = parseFloat(document.getElementById('investorSlider').value);
+      currentInputs.economicClimate = document.getElementById('economicSelect').value;
+
+      // Update UI slider text
+      document.getElementById('burnoutVal').innerText = currentInputs.burnout.toFixed(1);
+      document.getElementById('conflictVal').innerText = currentInputs.conflict.toFixed(1);
+      document.getElementById('runwayVal').innerText = currentInputs.runway.toFixed(1);
+      document.getElementById('investorVal').innerText = currentInputs.investor.toFixed(1) + ' / 10';
+
+      // Status hints
+      document.getElementById('burnoutStatus').innerText = 
+        currentInputs.burnout < 3.5 ? 'Low Fatigue' : currentInputs.burnout <= 6.5 ? 'Moderate Strain' : 'Severe Exhaustion';
+      document.getElementById('conflictStatus').innerText = 
+        currentInputs.conflict < 3.5 ? 'High Alignment' : currentInputs.conflict <= 6.5 ? 'Mild Friction' : 'Severe Gridlock';
+      document.getElementById('runwayStatus').innerText = 
+        currentInputs.runway < 6.0 ? 'Critical Runway' : currentInputs.runway < 15.0 ? 'Stable Horizon' : 'Comfortable Cushion';
+
+      // Compute Total Risk
+      const riskRatio = calculateStartupFailureRisk(
+        currentInputs.burnout, 
+        currentInputs.conflict, 
+        currentInputs.runway, 
+        currentInputs.investor,
+        currentInputs.economicClimate
+      );
+      const riskPercent = (riskRatio * 100).toFixed(1);
+
+      // Render Gauge Ring & Text
+      document.getElementById('riskPercentText').innerText = riskPercent + '%';
+      
+      const circumference = 314.15; // 2 * pi * 50
+      const strokeOffset = circumference - (riskRatio * circumference);
+      const gaugeCircle = document.getElementById('gaugeCircle');
+      gaugeCircle.style.strokeDashoffset = strokeOffset;
+
+      // Dynamic Color based on Risk Level
+      let strokeColor = '#10b981'; // Green
+      let badgeBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      let badgeLabel = 'LOW RISK';
+
+      // Same cut-offs as the dataset: Low < 0.35, Medium 0.35-0.65, High > 0.65
+      if (riskRatio > 0.65) {
+        strokeColor = '#f43f5e';
+        badgeBg = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        badgeLabel = 'HIGH RISK';
+      } else if (riskRatio >= 0.35) {
+        strokeColor = '#f59e0b';
+        badgeBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        badgeLabel = 'MEDIUM RISK';
+      }
+
+      gaugeCircle.setAttribute('stroke', strokeColor);
+      const badgeElem = document.getElementById('riskCategoryBadge');
+      badgeElem.className = `px-2.5 py-0.5 text-xs font-mono font-semibold rounded border ${badgeBg}`;
+      badgeElem.innerText = badgeLabel;
+
+      // Calculate Factor Attribution
+      // Size of each driver's effect relative to the dataset-average founder
+      const burnoutWeight = Math.abs(MODEL.burnout * (currentInputs.burnout - DATASET_MEAN.burnout)) + 0.01;
+      const conflictWeight = Math.abs(MODEL.conflict * (currentInputs.conflict - DATASET_MEAN.conflict)) + 0.01;
+      const runwayWeight = Math.abs(MODEL.runway * (currentInputs.runway - DATASET_MEAN.runway)) + 0.01;
+      const sumWeights = burnoutWeight + conflictWeight + runwayWeight;
+
+      const burnoutPct = Math.round((burnoutWeight / sumWeights) * 100);
+      const conflictPct = Math.round((conflictWeight / sumWeights) * 100);
+      const runwayPct = 100 - (burnoutPct + conflictPct);
+
+      document.getElementById('burnoutContribText').innerText = burnoutPct + '%';
+      document.getElementById('burnoutContribBar').style.width = burnoutPct + '%';
+
+      document.getElementById('conflictContribText').innerText = conflictPct + '%';
+      document.getElementById('conflictContribBar').style.width = conflictPct + '%';
+
+      document.getElementById('runwayContribText').innerText = runwayPct + '%';
+      document.getElementById('runwayContribBar').style.width = runwayPct + '%';
+
+      const humanShare = burnoutPct + conflictPct;
+      document.getElementById('humanVsMoneyText').innerText = humanShare + '%';
+
+      // Recommendation text logic
+      // Real what-if analysis: which single change lowers risk the most?
+      const c = currentInputs;
+      const base = riskRatio;
+      const options = [
+        { label: 'Extending runway by 3 months', risk: calculateStartupFailureRisk(c.burnout, c.conflict, Math.min(36, c.runway + 3), c.investor, c.economicClimate) },
+        { label: 'Reducing founder burnout by 1.5 points', risk: calculateStartupFailureRisk(Math.max(1, c.burnout - 1.5), c.conflict, c.runway, c.investor, c.economicClimate) },
+        { label: 'Reducing co-founder conflict by 1.5 points', risk: calculateStartupFailureRisk(c.burnout, Math.max(0, c.conflict - 1.5), c.runway, c.investor, c.economicClimate) }
+      ].map(o => ({ ...o, drop: (base - o.risk) * 100 })).sort((x, y) => y.drop - x.drop);
+      const best = options[0];
+      const recText = `${best.label} lowers shutdown probability by about ${best.drop.toFixed(1)} percentage points (${(base*100).toFixed(1)}% → ${(best.risk*100).toFixed(1)}%). It is the biggest single lever among the three tested.`;
+      document.getElementById('recommendationText').innerText = recText;
+
+      // Update Charts & Scenario UI
+      updateSensitivityChart();
+      updateRadarChart();
+      renderScenarios();
+    }
+
+    function loadArchetype(key) {
+      const arch = ARCHETYPES[key];
+      if (!arch) return;
+      document.getElementById('burnoutSlider').value = arch.burnout;
+      document.getElementById('conflictSlider').value = arch.conflict;
+      document.getElementById('runwaySlider').value = arch.runway;
+      document.getElementById('investorSlider').value = arch.investor;
+      document.getElementById('economicSelect').value = arch.economicClimate || 'stable';
+      updateCalculator();
+    }
+
+    function resetSliders() {
+      loadArchetype('calm');
+    }
+
+    function saveCurrentScenario() {
+      if (scenarios.length >= 4) {
+        alert('You can compare up to 4 scenarios at once. Please remove one to add another.');
+        return;
+      }
+      
+      const titleSelect = document.getElementById('scenarioTypeSelect');
+      const title = titleSelect.value || `Scenario ${scenarios.length + 1}`;
+
+      const risk = (calculateStartupFailureRisk(
+        currentInputs.burnout, 
+        currentInputs.conflict, 
+        currentInputs.runway, 
+        currentInputs.investor,
+        currentInputs.economicClimate
+      ) * 100).toFixed(1);
+
+      scenarios.push({
+        id: Date.now().toString(),
+        title: title,
+        burnout: currentInputs.burnout,
+        conflict: currentInputs.conflict,
+        runway: currentInputs.runway,
+        investor: currentInputs.investor,
+        economicClimate: currentInputs.economicClimate,
+        risk: parseFloat(risk)
+      });
+
+      renderScenarios();
+    }
+
+    function removeScenario(id) {
+      scenarios = scenarios.filter(s => s.id !== id);
+      renderScenarios();
+    }
+
+    function clearScenarios() {
+      scenarios = [];
+      renderScenarios();
+    }
+
+    function renderScenarios() {
+      const grid = document.getElementById('scenarioGrid');
+      grid.innerHTML = '';
+
+      if (scenarios.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-8 text-center border border-dashed border-zinc-800 rounded-lg text-zinc-500 text-xs font-mono">
+            No saved scenarios yet. Use the "Save Scenario" button above to add configurations side-by-side.
+          </div>
+        `;
+        return;
+      }
+
+      // Find winner (lowest risk)
+      const lowestRisk = Math.min(...scenarios.map(s => s.risk));
+
+      scenarios.forEach((sc, idx) => {
+        const isWinner = sc.risk === lowestRisk && scenarios.length > 1;
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-lg border flex flex-col justify-between transition relative ${
+          isWinner ? 'bg-zinc-900/90 border-emerald-500/50 ring-1 ring-emerald-500/20' : 'bg-zinc-900/50 border-zinc-800'
+        }`;
+
+        card.innerHTML = `
+          <div>
+            ${isWinner ? '<span class="absolute -top-2.5 right-3 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500 text-zinc-950 font-bold">Winner: Lowest Risk</span>' : ''}
+            
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-xs font-semibold text-zinc-200 font-mono truncate pr-2">${sc.title}</h3>
+              <button onclick="removeScenario('${sc.id}')" class="text-zinc-500 hover:text-zinc-300 text-xs">✕</button>
+            </div>
+
+            <div class="my-3 text-center py-2 bg-zinc-950/60 rounded border border-zinc-800/80">
+              <span class="text-2xl font-extrabold font-mono text-zinc-100">${sc.risk}%</span>
+              <span class="block text-[10px] text-zinc-500 uppercase font-mono">Failure Risk</span>
+            </div>
+
+            <div class="space-y-1.5 text-[11px] font-mono text-zinc-400">
+              <div class="flex justify-between">
+                <span>Burnout:</span>
+                <span class="text-zinc-200 font-medium">${sc.burnout.toFixed(1)} / 10</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Conflict:</span>
+                <span class="text-zinc-200 font-medium">${sc.conflict.toFixed(1)} / 10</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Runway:</span>
+                <span class="text-zinc-200 font-medium">${sc.runway.toFixed(1)} Mos</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Climate:</span>
+                <span class="text-zinc-300 uppercase font-semibold">${CLIMATE_LABELS[sc.economicClimate] || 'Stable Economy'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function updateSensitivityChart() {
+      const ctx = document.getElementById('sensitivityChart').getContext('2d');
+      
+      const runwaySteps = [36, 30, 24, 18, 15, 12, 9, 6, 4, 2, 1];
+      const curveData = runwaySteps.map(r => {
+        const risk = calculateStartupFailureRisk(
+          currentInputs.burnout,
+          currentInputs.conflict,
+          r,
+          currentInputs.investor,
+          currentInputs.economicClimate
+        );
+        return (risk * 100).toFixed(1);
+      });
+
+      if (sensitivityChartInstance) {
+        sensitivityChartInstance.data.datasets[0].data = curveData;
+        sensitivityChartInstance.update();
+        return;
+      }
+
+      sensitivityChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: runwaySteps.map(r => r + 'm'),
+          datasets: [{
+            label: 'Failure Risk (%)',
+            data: curveData,
+            borderColor: '#e4e4e7',
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) { return ` Risk: ${context.raw}%`; }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#27272a' },
+              ticks: { color: '#a1a1aa', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: '#27272a' },
+              ticks: { color: '#a1a1aa', font: { family: 'JetBrains Mono', size: 10 } },
+              min: 0,
+              max: 100
+            }
+          }
+        }
+      });
+    }
+
+    function updateRadarChart() {
+      const ctx = document.getElementById('radarChart').getContext('2d');
+      
+      // Macro axis = dataset mean shutdown probability for each climate x 10
+      const ecoSeverityMap = { boom: 3.0, stable: 3.1, downturn: 5.0, crisis: 5.7 };
+
+      const activeData = [
+        currentInputs.burnout,
+        currentInputs.conflict,
+        Math.max(0, 10 - (currentInputs.runway / 3.6)),
+        currentInputs.investor,
+        ecoSeverityMap[currentInputs.economicClimate] || 5.0
+      ];
+
+      const datasetAvgData = [3.44, 4.01, Math.max(0, 10 - (12.39 / 3.6)), 6.14, 3.9];
+
+      if (radarChartInstance) {
+        radarChartInstance.data.datasets[0].data = activeData;
+        radarChartInstance.update();
+        return;
+      }
+
+      radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Burnout', 'Conflict', 'Runway Urgency', 'Investor Pressure', 'Macro Climate'],
+          datasets: [
+            {
+              label: 'Active Scenario',
+              data: activeData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              borderWidth: 1.5,
+              pointRadius: 2.5
+            },
+            {
+              label: '50k Founder Avg',
+              data: datasetAvgData,
+              borderColor: '#71717a',
+              backgroundColor: 'rgba(113, 113, 122, 0.1)',
+              borderWidth: 1,
+              borderDash: [3, 3],
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#a1a1aa', font: { family: 'Inter', size: 10 }, boxWidth: 10 }
+            }
+          },
+          scales: {
+            r: {
+              angleLines: { color: '#27272a' },
+              grid: { color: '#27272a' },
+              pointLabels: { color: '#a1a1aa', font: { family: 'JetBrains Mono', size: 9 } },
+              ticks: { display: false },
+              min: 0,
+              max: 10
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize application on DOM load
+    window.onload = function() {
+      // Recompute saved scenario risks with the fitted model so cards always match the live calculator
+      scenarios.forEach(sc => {
+        sc.risk = parseFloat((calculateStartupFailureRisk(sc.burnout, sc.conflict, sc.runway, sc.investor, sc.economicClimate) * 100).toFixed(1));
+      });
+      updateCalculator();
+    };
+  </script>
+</body>
+</html>
