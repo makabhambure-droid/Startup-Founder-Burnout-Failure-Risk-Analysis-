@@ -74,4 +74,4 @@ Outputs (final CSV and SQLite database) are saved in an `outputs/` folder. To us
 
 ## Author
 
-`<Makarand A Bhambure>`
+`<Makarand Bhambure>`
