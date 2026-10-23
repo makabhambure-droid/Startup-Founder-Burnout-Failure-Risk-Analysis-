@@ -32,11 +32,9 @@ Python 3.10+, pandas, NumPy, SQLite (`sqlite3`), Matplotlib, Seaborn, SciPy, sci
 | File | Purpose |
 |---|---|
 | `startup_founder_burnout_analysis.ipynb` | Main notebook (cleaning, features, EDA, model) |
-| `startup_founder_burnout_analysis.py` | Same code as a script |
 | `startup_failure_risk_calculator.html` | Interactive risk calculator |
 | `requirements.txt` | Python dependencies |
 | `YourName_ProjectReport.docx` | Full project report |
-| `startup_founder_burnout_2026.csv` | Dataset  |
 
 ## Setup and run
 
